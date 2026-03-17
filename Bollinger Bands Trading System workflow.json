@@ -1,0 +1,200 @@
+{
+  "name": "Bollinger Bands Trading System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "2bebd811-7bc0-4d4b-a201-3fbb7e62d159",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = items[0].json.stdout;\nconst start = output.indexOf('[N8N_OUTPUT_START]') + '[N8N_OUTPUT_START]'.length;\nconst end = output.indexOf('[N8N_OUTPUT_END]');\nconst jsonStr = output.substring(start, end).trim();\nconst data = JSON.parse(jsonStr);\nreturn [{ json: data }];"
+      },
+      "id": "d78cedc9-babb-4d3b-b0e6-b51990ef2355",
+      "name": "Parse JSON Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.signal }}",
+              "rightValue": "No-Action",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5c3cbcd8-30e3-4d82-b939-c3de29414ec9",
+      "name": "Is Buy or Sell?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        80,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1nO9gOZs4m3ioBPu7O2T-jTHJhIe03bJM_mi0NJWfFp0/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Symbol": "={{ $json.symbol }}",
+            "Signal": "={{ $json.signal }}",
+            "Close Price": "={{ $json.latest_close }}",
+            "SMA": "={{ $json.latest_sma }}",
+            "Upper Band": "={{ $json.upper_band }}",
+            "Lower Band": "={{ $json.lower_band }}",
+            "Quantity": "={{ $json.suggested_qty }}",
+            "Trade Amount": "={{ $json.trade_amount_rs }}",
+            "Final Balance": "={{ $json.final_balance }}",
+            "Total Trades": "={{ $json.total_trades }}",
+            "Mode": "={{ $json.mode }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "63337f67-7290-48fe-97c4-43c50839250b",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        336,
+        336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "o87ei30gfQFDQ90p",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "d3e27894-308b-4c32-83d3-167565caadbb",
+      "name": "No Action",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        336,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -336,
+        448
+      ],
+      "id": "f978a146-fdb3-4f27-adb6-8a1403fb5c6d",
+      "name": "run python script"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Parse JSON Output": {
+      "main": [
+        [
+          {
+            "node": "Is Buy or Sell?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Buy or Sell?": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "run python script": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8715d847-6f1e-4f8e-8189-f0982ad32af3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1eb13f2674c98abb1f9708b177eed6c2ac237453d64f4d9b4d8ee4112b5819b8"
+  },
+  "id": "pmKdZq2zmEqOyuzr",
+  "tags": []
+}

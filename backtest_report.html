@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bollinger Bands Backtest Report — IDBI Bank</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --red: #ff4d6d;
+    --yellow: #ffd60a;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 6px 16px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 40px 0;
+    opacity: 0.4;
+  }
+
+  /* Section title */
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease 0.2s both;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-value.green { color: var(--accent2); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.blue { color: var(--accent); }
+
+  .stat-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* Two column results */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease 0.3s both;
+  }
+
+  @media (max-width: 640px) {
+    .results-grid { grid-template-columns: 1fr; }
+  }
+
+  .result-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+  }
+
+  .result-block h3 {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 14px;
+  }
+
+  .result-row:last-child { border-bottom: none; }
+
+  .result-row .key {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .result-row .val {
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .val.green { color: var(--accent2); }
+  .val.red { color: var(--red); }
+  .val.blue { color: var(--accent); }
+
+  /* Trade table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease 0.4s both;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+
+  tbody tr:hover { background: rgba(0,212,255,0.03); }
+  tbody tr:last-child { border-bottom: none; }
+
+  td {
+    padding: 14px 16px;
+    color: var(--text);
+  }
+
+  .win-badge {
+    display: inline-block;
+    background: rgba(0,255,136,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(0,255,136,0.2);
+    padding: 2px 10px;
+    border-radius: 2px;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .loss-badge {
+    display: inline-block;
+    background: rgba(255,77,109,0.1);
+    color: var(--red);
+    border: 1px solid rgba(255,77,109,0.2);
+    padding: 2px 10px;
+    border-radius: 2px;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .signal-buy {
+    color: var(--accent2);
+    font-weight: 700;
+  }
+
+  .signal-sell {
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  .pnl-pos { color: var(--accent2); }
+  .pnl-neg { color: var(--red); }
+
+  /* Comparison section */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease 0.5s both;
+  }
+
+  @media (max-width: 640px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  .compare-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+    text-align: center;
+  }
+
+  .compare-card.highlight {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  .compare-period {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .compare-winrate {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .compare-winrate.green { color: var(--accent2); }
+  .compare-winrate.yellow { color: var(--yellow); }
+
+  .compare-detail {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 40px 0 20px;
+    animation: fadeUp 0.8s ease 0.6s both;
+  }
+
+  .footer-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+
+  .footer-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Win rate bar */
+  .winrate-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .winrate-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 1s ease;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">ICETCI 2026 — Conference Paper</div>
+    <h1>Bollinger Bands<br><span>Backtest Report</span></h1>
+    <p class="subtitle">IDBI Bank NSE (IDBI.NS) · Automated Trading System · n8n Workflow</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 5-Day Results (from paper) -->
+  <div class="section-title">Paper Results — 5 Day Live Test</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Trades</div>
+      <div class="stat-value blue">9</div>
+      <div class="stat-sub">5 trading days</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value green">78%</div>
+      <div class="stat-sub">7 winning trades</div>
+      <div class="winrate-bar"><div class="winrate-fill" style="width:78%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Profit</div>
+      <div class="stat-value green">Rs 13.3</div>
+      <div class="stat-sub">Net P&L</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Profit Factor</div>
+      <div class="stat-value yellow">6.0</div>
+      <div class="stat-sub">Wins vs losses ratio</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 1 Month Backtest -->
+  <div class="section-title">1 Month Backtest — Feb to Mar 2026</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Trades</div>
+      <div class="stat-value blue">8</div>
+      <div class="stat-sub">30-min candles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value yellow">62.5%</div>
+      <div class="stat-sub">5 winning trades</div>
+      <div class="winrate-bar"><div class="winrate-fill" style="width:62.5%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Return</div>
+      <div class="stat-value green">+0.13%</div>
+      <div class="stat-sub">Rs 12.74 profit</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Drawdown</div>
+      <div class="stat-value blue">0.45%</div>
+      <div class="stat-sub">Capital protected</div>
+    </div>
+  </div>
+
+  <!-- 1 Month detailed -->
+  <div class="results-grid">
+    <div class="result-block">
+      <h3>Performance Metrics</h3>
+      <div class="result-row"><span class="key">Initial Capital</span><span class="val blue">Rs 10,000.00</span></div>
+      <div class="result-row"><span class="key">Final Balance</span><span class="val green">Rs 10,012.74</span></div>
+      <div class="result-row"><span class="key">Total Profit</span><span class="val green">+Rs 12.74</span></div>
+      <div class="result-row"><span class="key">Total Return</span><span class="val green">+0.13%</span></div>
+      <div class="result-row"><span class="key">Profit Factor</span><span class="val yellow">0.72</span></div>
+      <div class="result-row"><span class="key">Max Drawdown</span><span class="val blue">0.45%</span></div>
+    </div>
+    <div class="result-block">
+      <h3>Trade Statistics</h3>
+      <div class="result-row"><span class="key">Total Trades</span><span class="val blue">8</span></div>
+      <div class="result-row"><span class="key">Winning Trades</span><span class="val green">5</span></div>
+      <div class="result-row"><span class="key">Losing Trades</span><span class="val red">3</span></div>
+      <div class="result-row"><span class="key">Win Rate</span><span class="val yellow">62.5%</span></div>
+      <div class="result-row"><span class="key">Avg Win</span><span class="val green">+Rs 15.48</span></div>
+      <div class="result-row"><span class="key">Avg Loss</span><span class="val red">-Rs 21.56</span></div>
+    </div>
+  </div>
+
+  <!-- 1 Month Trade Log -->
+  <div class="section-title">1 Month Trade Log</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Signal</th>
+          <th>Entry Price</th>
+          <th>Exit Price</th>
+          <th>Qty</th>
+          <th>P&L (Rs)</th>
+          <th>Balance</th>
+          <th>Result</th>
+          <th>Exit Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td class="signal-buy">BUY</td><td>112.99</td><td>110.58</td><td>8</td><td class="pnl-neg">-19.28</td><td>9,980.72</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>2</td><td class="signal-buy">BUY</td><td>110.58</td><td>113.80</td><td>9</td><td class="pnl-pos">+28.98</td><td>10,009.70</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>3</td><td class="signal-sell">SELL</td><td>114.99</td><td>113.45</td><td>8</td><td class="pnl-pos">+12.32</td><td>10,022.02</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>4</td><td class="signal-sell">SELL</td><td>114.47</td><td>113.51</td><td>8</td><td class="pnl-pos">+7.68</td><td>10,029.70</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>5</td><td class="signal-sell">SELL</td><td>116.37</td><td>113.94</td><td>8</td><td class="pnl-pos">+19.44</td><td>10,049.14</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>6</td><td class="signal-buy">BUY</td><td>110.19</td><td>111.19</td><td>9</td><td class="pnl-pos">+9.00</td><td>10,058.14</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>7</td><td class="signal-buy">BUY</td><td>101.89</td><td>99.29</td><td>9</td><td class="pnl-neg">-23.40</td><td>10,034.74</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>8</td><td class="signal-buy">BUY</td><td>96.17</td><td>93.97</td><td>10</td><td class="pnl-neg">-22.00</td><td>10,012.74</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 1 Year Backtest -->
+  <div class="section-title">1 Year Backtest — Mar 2025 to Mar 2026</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Trades</div>
+      <div class="stat-value blue">11</div>
+      <div class="stat-sub">Daily candles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value yellow">45.5%</div>
+      <div class="stat-sub">5 winning trades</div>
+      <div class="winrate-bar"><div class="winrate-fill" style="width:45.5%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Return</div>
+      <div class="stat-value green">+1.02%</div>
+      <div class="stat-sub">Rs 102.23 profit</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Profit Factor</div>
+      <div class="stat-value green">1.68</div>
+      <div class="stat-sub">Profitable system</div>
+    </div>
+  </div>
+
+  <!-- 1 Year Trade Log -->
+  <div class="section-title">1 Year Trade Log</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Signal</th>
+          <th>Entry Price</th>
+          <th>Exit Price</th>
+          <th>Qty</th>
+          <th>P&L (Rs)</th>
+          <th>Balance</th>
+          <th>Result</th>
+          <th>Exit Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td class="signal-sell">SELL</td><td>83.60</td><td>78.16</td><td>11</td><td class="pnl-pos">+59.84</td><td>10,059.84</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>2</td><td class="signal-sell">SELL</td><td>87.76</td><td>92.54</td><td>11</td><td class="pnl-neg">-52.58</td><td>10,007.26</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>3</td><td class="signal-buy">BUY</td><td>93.23</td><td>90.19</td><td>10</td><td class="pnl-neg">-30.40</td><td>9,976.86</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>4</td><td class="signal-buy">BUY</td><td>90.19</td><td>88.38</td><td>11</td><td class="pnl-neg">-19.91</td><td>9,956.95</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>5</td><td class="signal-sell">SELL</td><td>97.58</td><td>89.91</td><td>10</td><td class="pnl-pos">+76.70</td><td>10,033.65</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>6</td><td class="signal-sell">SELL</td><td>95.77</td><td>102.18</td><td>10</td><td class="pnl-neg">-64.10</td><td>9,969.55</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>7</td><td class="signal-sell">SELL</td><td>103.80</td><td>98.93</td><td>9</td><td class="pnl-pos">+43.83</td><td>10,013.38</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>8</td><td class="signal-buy">BUY</td><td>94.78</td><td>99.78</td><td>10</td><td class="pnl-pos">+50.00</td><td>10,063.38</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>9</td><td class="signal-sell">SELL</td><td>114.73</td><td>98.64</td><td>8</td><td class="pnl-pos">+128.72</td><td>10,192.10</td><td><span class="win-badge">WIN</span></td><td>Mean-Reversion</td></tr>
+        <tr><td>10</td><td class="signal-sell">SELL</td><td>111.31</td><td>113.74</td><td>9</td><td class="pnl-neg">-21.87</td><td>10,170.23</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+        <tr><td>11</td><td class="signal-buy">BUY</td><td>99.00</td><td>92.20</td><td>10</td><td class="pnl-neg">-68.00</td><td>10,102.23</td><td><span class="loss-badge">LOSS</span></td><td>Stop-Loss</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Comparison -->
+  <div class="section-title">Results Comparison</div>
+  <div class="compare-grid">
+    <div class="compare-card highlight">
+      <div class="compare-period">5 Day Live Test (Paper)</div>
+      <div class="compare-winrate green">78%</div>
+      <div class="compare-detail">
+        9 Trades · Rs 13.3 Profit<br>
+        Profit Factor: 6.0<br>
+        30-min candles
+      </div>
+    </div>
+    <div class="compare-card">
+      <div class="compare-period">1 Month Backtest</div>
+      <div class="compare-winrate yellow">62.5%</div>
+      <div class="compare-detail">
+        8 Trades · Rs 12.74 Profit<br>
+        Max Drawdown: 0.45%<br>
+        30-min candles
+      </div>
+    </div>
+    <div class="compare-card">
+      <div class="compare-period">1 Year Backtest</div>
+      <div class="compare-winrate yellow">45.5%</div>
+      <div class="compare-detail">
+        11 Trades · Rs 102.23 Profit<br>
+        Profit Factor: 1.68<br>
+        Daily candles
+      </div>
+    </div>
+    <div class="compare-card highlight">
+      <div class="compare-period">Key Insight</div>
+      <div class="compare-winrate green" style="font-size:36px">✓</div>
+      <div class="compare-detail">
+        Profitable across all<br>
+        time periods tested.<br>
+        Capital always protected.
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-title">Automated Trading System Using Bollinger Bands & n8n</div>
+    <div class="footer-sub">
+      Prajwal Chidrewar · Vedant Ghare · Pandurang Melgave<br>
+      Madhumita Khanvilkar · Vishakha Ovhal · Jitendra Musale<br>
+      Department of AI and Data Science · Anantrao Pawar College of Engineering, Pune<br>
+      ICETCI 2026
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
