@@ -11,6 +11,7 @@ Automated Trading System Using Bollinger Bands and n8n Workflow Automation
 
 <img width="1276" height="661" alt="Screenshot 2026-03-17 at 6 14 54 PM" src="https://github.com/user-attachments/assets/2df2d21b-f0dd-4ff4-89e5-c21fa6a34dca" />
 
+<img width="1276" height="1000" alt="workflow_600dpi" src="https://github.com/user-attachments/assets/f793539f-2213-4f0a-b825-d8d48c696e54" />
 
 
 
